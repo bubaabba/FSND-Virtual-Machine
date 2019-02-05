@@ -1,13 +1,18 @@
-from flask import Flask, render_template, request, redirect,jsonify, url_for, flash
+from flask import (Flask, 
+                   render_template, 
+                   request, 
+                   redirect,
+                   jsonify, 
+                   url_for, 
+                   flash)
 
 from sqlalchemy import create_engine, asc
 from sqlalchemy.orm import sessionmaker
 from items_catalogModel import Base, Category, Items, User
-
 from flask import session as login_session
 import random
 import string
-
+from functools import wraps
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
 import httplib2
@@ -20,7 +25,7 @@ CLIENT_ID = json.loads(
 
 app = Flask(__name__)
 
-#Connect to Database and create database session
+# Connect to Database and create database session
 engine = create_engine('sqlite:///catalogs.db')
 Base.metadata.bind = engine
 
@@ -28,6 +33,8 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 # Create anti-forgery state token
+
+
 @app.route('/login')
 def showLogin():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
@@ -88,7 +95,8 @@ def gconnect():
     stored_access_token = login_session.get('access_token')
     stored_gplus_id = login_session.get('gplus_id')
     if stored_access_token is not None and gplus_id == stored_gplus_id:
-        response = make_response(json.dumps('Current user is already connected.'),200)
+        response = make_response(json.dumps
+           ('Current user is already connected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
 
@@ -106,13 +114,13 @@ def gconnect():
     login_session['username'] = data['name']
     login_session['picture'] = data['picture']
     login_session['email'] = data['email']
-    
+  
     # see if user exists, if it doesn't make a new one
     user_id = getUserID(data["email"])
     if not user_id:
         user_id = createUser(login_session)
     login_session['user_id'] = user_id
-   
+
     output = ''
     output += '<h1>Welcome, '
     output += login_session['username']
@@ -120,18 +128,20 @@ def gconnect():
     output += '<img src="'
     output += login_session['picture']
     output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
-    flash ("you are now logged in as %s" % login_session['username'])
+    flash("you are now logged in as %s" % login_session['username'])
     return output
 
 # User Helper Functions
+
+
 def createUser(login_session):
-       newUser = User(name=login_session['username'], email=login_session[
-                   'email'], picture=login_session['picture'])
-       session.add(newUser)
-       session.commit()
-       session.rollback()
-       user = session.query(User).filter_by(email=login_session['email']).first()
-       return user.id
+    newUser = User(name=login_session['username'], email=login_session[
+         'email'], picture=login_session['picture'])
+    session.add(newUser)
+    session.commit()
+    session.rollback()
+    user = session.query(User).filter_by(email=login_session['email']).first()
+    return user.id
 
 
 def getUserInfo(user_id):
@@ -145,6 +155,15 @@ def getUserID(email):
         return user.id
     except:
         return None
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' in login_session:
+            return f(*args, **kwargs)
+        else:
+            flash("Login to Access this Page")
+            return redirect('/login')
+    return decorated_function
 
 @app.route('/gdisconnect')
 def gdisconnect():
@@ -208,6 +227,7 @@ def showCategories():
 
 #Create a new category
 @app.route('/category/new/', methods=['GET','POST'])
+@login_required
 def newCategory():
     if request.method == 'POST':
       newCategory = Category(
@@ -221,11 +241,10 @@ def newCategory():
 
 #Edit a Category
 @app.route('/category/<int:category_id>/edit/', methods = ['GET', 'POST'])
+@login_required
 def editCategory(category_id):
     editedCategory = session.query(
         Category).filter_by(id = category_id).one()
-    if 'username' not in login_session:
-        return redirect('/login') 
     if editedCategory.user_id != login_session['user_id'] :
         return "<script>function myFunction() {alert('You are not authorized to edit this category. Please create your own category in order to edit.');}</script><body onload='myFunction()''>"    
     if request.method == 'POST':
@@ -239,11 +258,10 @@ def editCategory(category_id):
 
 #Delete a Category
 @app.route('/category/<int:category_id>/delete/', methods = ['GET','POST'])
+@login_required
 def deleteCategory(category_id): 
   categoryToDelete = session.query(
       Category).filter_by(id = category_id).one()
-  if 'username' not in login_session:
-        return redirect('/login')
   if categoryToDelete.user_id != login_session['user_id']:
         return "<script>function myFunction() {alert('You are not authorized to delete this category. Please create your own category in order to delete.');}</script><body onload='myFunction()''>"  
   if request.method == 'POST':
@@ -264,9 +282,8 @@ def showItems(category_id):
      
 #Create a new attire
 @app.route('/category/<int:category_id>/attire/new/',methods=['GET','POST'])
+@login_required
 def newAttireItem(category_id):
-    if 'username' not in login_session:
-        return redirect('/login')
     category = session.query(Category).filter_by(id = category_id).one()
 
     if login_session['user_id'] != category.user_id:
@@ -275,7 +292,7 @@ def newAttireItem(category_id):
         newItem = Items(name = request.form['name'], 
                     description = request.form['description'], 
                     category_id = category_id,
-                    gplus_id=category.user_id)
+                    user_id=category.user_id)
         session.add(newItem)
         session.commit()
         flash('New Attire %s Successfully Created' % (newItem.name))
@@ -285,9 +302,8 @@ def newAttireItem(category_id):
 
 #Edit an attire
 @app.route('/category/<int:category_id>/attire/<int:attire_id>/edit', methods=['GET','POST'])
+@login_required
 def editItem(category_id, attire_id):
-    if 'username' not in login_session:
-        return redirect('/login')
     editedItem = session.query(Items).filter_by(id = attire_id).one()
     category = session.query(Category).filter_by(id = category_id).one()
     if login_session['user_id'] != category.user_id:
@@ -309,9 +325,8 @@ def editItem(category_id, attire_id):
 
 #Delete a menu item
 @app.route('/category/<int:category_id>/attire/<int:attire_id>/delete', methods = ['GET','POST'])
+@login_required
 def deleteItem(category_id, attire_id):
-    if 'username' not in login_session:
-        return redirect('/login')
     category = session.query(Category).filter_by(id = category_id).one()
     itemToDelete = session.query(Items).filter_by(id = attire_id).one() 
     if login_session['user_id'] != category.user_id:
