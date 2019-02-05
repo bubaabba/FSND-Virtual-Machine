@@ -20,15 +20,24 @@ Type ls to ensure that you are inside the directory that contains catalogapp.py,
 
 Type python catalogapp.py to run the Flask web server. In your browser visit http://localhost:5000 to view the item catalog app.  
 
-## Project Rubric
+### Project Rubric
 
 ** 1 ** The project implements a JSON endpoint that serves the same information as displayed in the HTML endpoints for an arbitrary item in the catalog.
+
 ** 2 ** The website read category and item information from a database.
+
 ** 3 ** The website include a form allowing users to add new items and correctly processes these forms.
+
 ** 4 ** The website include a form to update a record in the database and correctly processes this form.
+
 ** 5 ** The website include a way to delete an item from the catalog.
+
 ** 6 ** Create, delete and update operations do consider authorization status prior to execution.
+
 ** 7 ** Page implements a third-party authentication & authorization service.
+
 ** 8 ** There is a 'Login' and 'Logout' button/link in the project.
+
 ** 9 ** Code is compliant with the Python [PEP 8]
+
 ** 10 ** Comments are present and effectively explain longer code procedures
