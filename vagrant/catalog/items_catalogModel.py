@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 
 Base = declarative_base()
 
+
 class User(Base):
     __tablename__ = 'user'
 
@@ -15,6 +16,7 @@ class User(Base):
     email = Column(String(250), nullable=False)
     picture = Column(String(250))
 
+
 @property
 def serialize(self):
         return {
@@ -22,6 +24,7 @@ def serialize(self):
             'name': self.name,
             'id': self.id,
         }
+
 
 class Category(Base):
     __tablename__ = 'category'
@@ -47,7 +50,8 @@ class Items(Base):
     id = Column(Integer, primary_key=True)
     description = Column(String(250))
     category_id = Column(Integer, ForeignKey('category.id'))
-    category = relationship(Category)
+    category = relationship("Category",  backref=backref
+                            ("items", cascade="all, delete-orphan"))
     user_id = Column(Integer, ForeignKey('user.id'))
     user = relationship(User)
 
@@ -60,7 +64,7 @@ class Items(Base):
             'id': self.id,
         }
 
-    
+
 engine = create_engine('sqlite:///catalogs.db')
 
 

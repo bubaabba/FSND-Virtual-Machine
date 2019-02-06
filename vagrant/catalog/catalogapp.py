@@ -1,11 +1,10 @@
-from flask import (Flask, 
-                   render_template, 
-                   request, 
+from flask import (Flask,
+                   render_template,
+                   request,
                    redirect,
-                   jsonify, 
-                   url_for, 
+                   jsonify,
+                   url_for,
                    flash)
-
 from sqlalchemy import create_engine, asc
 from sqlalchemy.orm import sessionmaker
 from items_catalogModel import Base, Category, Items, User
@@ -96,7 +95,7 @@ def gconnect():
     stored_gplus_id = login_session.get('gplus_id')
     if stored_access_token is not None and gplus_id == stored_gplus_id:
         response = make_response(json.dumps
-           ('Current user is already connected.'), 200)
+                                 ('Current user is already connected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
 
@@ -114,7 +113,7 @@ def gconnect():
     login_session['username'] = data['name']
     login_session['picture'] = data['picture']
     login_session['email'] = data['email']
-  
+
     # see if user exists, if it doesn't make a new one
     user_id = getUserID(data["email"])
     if not user_id:
@@ -127,7 +126,7 @@ def gconnect():
     output += '!</h1>'
     output += '<img src="'
     output += login_session['picture']
-    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '  # noqa
     flash("you are now logged in as %s" % login_session['username'])
     return output
 
@@ -155,6 +154,8 @@ def getUserID(email):
         return user.id
     except:
         return None
+
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -165,18 +166,20 @@ def login_required(f):
             return redirect('/login')
     return decorated_function
 
+
 @app.route('/gdisconnect')
 def gdisconnect():
     access_token = login_session.get('access_token')
     if access_token is None:
         print 'Access Token is None'
-        response = make_response(json.dumps('Current user not connected.'), 401)
+        response = make_response(json.dumps
+                                 ('Current user not connected.'), 401)
         response.headers['Content-Type'] = 'application/json'
         return response
     print 'In gdisconnect access token is %s', access_token
     print 'User name is: '
     print login_session['username']
-    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']  # noqa
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
     print 'result is '
@@ -191,156 +194,175 @@ def gdisconnect():
 
         response = make_response(json.dumps('Successfully disconnected.'), 200)
         response.headers['Content-Type'] = 'application/json'
-        return "<script>function myFunction() {alert('Successfully Logged Out.');}</script><body onload='myFunction()''>"
+        flash("Successfully logged out")
+        return redirect('/category')
 
-        #return response
+        # return response
     else:
-        response = make_response(json.dumps('Failed to revoke token for given user.'), 400)
+        response = make_response(json.dumps
+                                 ('Failed to revoke token for user.'), 400)
         response.headers['Content-Type'] = 'application/json'
         return response
 
-#JSON APIs to view Catalog Information
+
+# JSON APIs to view Catalog Information
 @app.route('/category/<int:category_id>/attire/JSON')
 def catalogItemJSON(category_id):
-    category = session.query(Category).filter_by(id = category_id).one()
-    items = session.query(Items).filter_by(category_id = category_id).all()
+    category = session.query(Category).filter_by(id=category_id).one()
+    items = session.query(Items).filter_by(category_id=category_id).all()
     return jsonify(AttireItems=[i.serialize for i in items])
 
 
 @app.route('/category/<int:category_id>/attire/<int:attire_id>/JSON')
 def ItemJSON(category_id, attire_id):
-    attireItem = session.query(Items).filter_by(id = attire_id).one()
-    return jsonify(AttireItems = attireItem.serialize)
+    attireItem = session.query(Items).filter_by(id=attire_id).one()
+    return jsonify(AttireItems=attireItem.serialize)
+
 
 @app.route('/category/JSON')
 def categoryJSON():
     categories = session.query(Category).all()
-    return jsonify(cat= [r.serialize for r in categories])
+    return jsonify(cat=[r.serialize for r in categories])
 
 
-#Show all categories
+# Show all categories
 @app.route('/')
 @app.route('/category/')
 def showCategories():
-  categories = session.query(Category).order_by(asc(Category.name))
-  return render_template('category.html', categories = categories)
+    categories = session.query(Category).order_by(asc(Category.name))
+    return render_template('category.html', categories=categories)
 
-#Create a new category
-@app.route('/category/new/', methods=['GET','POST'])
+
+# Create a new category
+@app.route('/category/new/',  methods=['GET', 'POST'])
 @login_required
 def newCategory():
     if request.method == 'POST':
-      newCategory = Category(
-           name = request.form['name'], user_id= login_session['user_id'] )
-      session.add(newCategory)
-      flash('New Category %s Successfully Created' % newCategory.name)
-      session.commit()
-      return redirect(url_for('showCategories'))
+        newCategory = Category(
+            name=request.form['name'], user_id=login_session['user_id'])
+        session.add(newCategory)
+        flash('New Category %s Successfully Created' % newCategory.name)
+        session.commit()
+        return redirect(url_for('showCategories'))
     else:
-      return render_template('newCategory.html')
+        return render_template('newCategory.html')
 
-#Edit a Category
-@app.route('/category/<int:category_id>/edit/', methods = ['GET', 'POST'])
+
+# Edit a Category
+@app.route('/category/<int:category_id>/edit/', methods=['GET', 'POST'])
 @login_required
 def editCategory(category_id):
     editedCategory = session.query(
-        Category).filter_by(id = category_id).one()
-    if editedCategory.user_id != login_session['user_id'] :
-        return "<script>function myFunction() {alert('You are not authorized to edit this category. Please create your own category in order to edit.');}</script><body onload='myFunction()''>"    
-    if request.method == 'POST':
-      if request.form['name']:
-        editedCategory.name = request.form['name']
-        flash('Category Successfully Edited %s' % editedCategory.name)
+        Category).filter_by(id=category_id).one()
+    if editedCategory.user_id != login_session['user_id']:
+        flash('Category was created by another user')
         return redirect(url_for('showCategories'))
+
+    if request.method == 'POST':
+        if request.form['name']:
+            editedCategory.name = request.form['name']
+            flash('Category Successfully Edited %s' % editedCategory.name)
+            return redirect(url_for('showCategories'))
     else:
-        return render_template('editCategory.html', category = editedCategory)
+        return render_template('editCategory.html', category=editedCategory)
 
 
-#Delete a Category
-@app.route('/category/<int:category_id>/delete/', methods = ['GET','POST'])
+# Delete a Category
+@app.route('/category/<int:category_id>/delete/',  methods=['GET', 'POST'])
 @login_required
-def deleteCategory(category_id): 
-  categoryToDelete = session.query(
-      Category).filter_by(id = category_id).one()
-  if categoryToDelete.user_id != login_session['user_id']:
-        return "<script>function myFunction() {alert('You are not authorized to delete this category. Please create your own category in order to delete.');}</script><body onload='myFunction()''>"  
-  if request.method == 'POST':
-    session.delete(categoryToDelete)
-    flash('%s Successfully Deleted' % categoryToDelete.name)
-    session.commit()
-    return redirect(url_for('showCategories', category_id = category_id))
-  else:
-    return render_template('deleteCategory.html',category = categoryToDelete)
+def deleteCategory(category_id):
+    categoryToDelete = session.query(
+        Category).filter_by(id=category_id).one()
+    if categoryToDelete.user_id != login_session['user_id']:
+        flash('Category was created by another user')
+        return redirect(url_for('showCategories'))
+    if request.method == 'POST':
+        session.delete(categoryToDelete)
+        flash('%s Successfully Deleted' % categoryToDelete.name)
+        session.commit()
+        return redirect(url_for('showCategories', category_id=category_id))
+    else:
+        return render_template('deleteCategory.html',
+                               category=categoryToDelete)
 
-#Show category Items
+
+# Show category Items
 @app.route('/category/<int:category_id>/')
 @app.route('/category/<int:category_id>/attire/')
 def showItems(category_id):
-    category = session.query(Category).filter_by(id = category_id).one()
-    items = session.query(Items).filter_by(category_id = category_id).all()
-    return render_template('item.html', items = items, category = category)
-     
-#Create a new attire
-@app.route('/category/<int:category_id>/attire/new/',methods=['GET','POST'])
+    category = session.query(Category).filter_by(id=category_id).one()
+    items = session.query(Items).filter_by(category_id=category_id).all()
+    return render_template('item.html', items=items, category=category)
+
+
+# Create a new attire
+@app.route('/category/<int:category_id>/attire/new/', methods=['GET', 'POST'])
 @login_required
 def newAttireItem(category_id):
-    category = session.query(Category).filter_by(id = category_id).one()
+    category = session.query(Category).filter_by(id=category_id).one()
 
     if login_session['user_id'] != category.user_id:
-        return "<script>function myFunction() {alert('You are not authorized to add  items to this category. Please create your own category in order to add items.');}</script><body onload='myFunction()''>"
+        flash('Category was created by another user')
+        return redirect(url_for('showItems'))
     if request.method == 'POST':
-        newItem = Items(name = request.form['name'], 
-                    description = request.form['description'], 
-                    category_id = category_id,
-                    user_id=category.user_id)
+        newItem = Items(name=request.form['name'],
+                        description=request.form['description'],
+                        category_id=category_id,
+                        user_id=category.user_id)
         session.add(newItem)
         session.commit()
         flash('New Attire %s Successfully Created' % (newItem.name))
-        return redirect(url_for('showItems', category_id = category_id))
+        return redirect(url_for('showItems', category_id=category_id))
     else:
-        return render_template('newitem.html', category_id = category_id)
+        return render_template('newitem.html', category_id=category_id)
 
-#Edit an attire
-@app.route('/category/<int:category_id>/attire/<int:attire_id>/edit', methods=['GET','POST'])
+
+# Edit an attire
+@app.route('/category/<int:category_id>/attire/<int:attire_id>/edit',
+           methods=['GET', 'POST'])
 @login_required
 def editItem(category_id, attire_id):
-    editedItem = session.query(Items).filter_by(id = attire_id).one()
-    category = session.query(Category).filter_by(id = category_id).one()
+    editedItem = session.query(Items).filter_by(id=attire_id).one()
+    category = session.query(Category).filter_by(id=category_id).one()
     if login_session['user_id'] != category.user_id:
-         return "<script>function myFunction() {alert('You are not authorized to edit items to this category. Please create your own category in order to edit items.');}</script><body onload='myFunction()''>"
+        flash('Category was created by another user')
+        return redirect(url_for('showItems'))
     if request.method == 'POST':
         if request.form['name']:
             editedItem.name = request.form['name']
         if request.form['description']:
             editedItem.description = request.form['description']
             session.add(editedItem)
-            session.commit() 
+            session.commit()
             flash(' Attire Successfully Edited')
-            return redirect(url_for('showItems', category_id = category_id))
+            return redirect(url_for('showItems', category_id=category_id))
     else:
-            return render_template('editattireitem.html', 
-                                category_id = category_id, 
-                                attire_id = attire_id, 
-                                item = editedItem)
+            return render_template('editattireitem.html',
+                                   category_id=category_id,
+                                   attire_id=attire_id,
+                                   item=editedItem)
 
-#Delete a menu item
-@app.route('/category/<int:category_id>/attire/<int:attire_id>/delete', methods = ['GET','POST'])
+
+# Delete a menu item
+@app.route('/category/<int:category_id>/attire/<int:attire_id>/delete',
+           methods=['GET', 'POST'])
 @login_required
 def deleteItem(category_id, attire_id):
-    category = session.query(Category).filter_by(id = category_id).one()
-    itemToDelete = session.query(Items).filter_by(id = attire_id).one() 
+    category = session.query(Category).filter_by(id=category_id).one()
+    itemToDelete = session.query(Items).filter_by(id=attire_id).one()
     if login_session['user_id'] != category.user_id:
-        return "<script>function myFunction() {alert('You are not authorized to delete items to this category. Please create your own category in order to delete items.');}</script><body onload='myFunction()''>"
+        flash('Category was created by another user')
+        return redirect(url_for('showItems'))
     if request.method == 'POST':
         session.delete(itemToDelete)
         session.commit()
         flash('Attire Successfully Deleted')
         return redirect(url_for('showCategories'))
     else:
-        return render_template('deleteattireItem.html', item = itemToDelete)
+        return render_template('deleteattireItem.html', item=itemToDelete)
 
 if __name__ == '__main__':
-  app.secret_key = 'super_secret_key'
-  app.debug = True
-  threaded = False
-  app.run (host = '0.0.0.0', port = 5000)
+    app.secret_key = 'super_secret_key'
+    app.debug = True
+    threaded = False
+    app.run(host='0.0.0.0', port=5000)

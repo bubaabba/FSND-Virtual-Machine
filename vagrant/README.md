@@ -22,7 +22,7 @@ Type python catalogapp.py to run the Flask web server. In your browser visit htt
 
 ### Project Rubric
 
-** 1 ** The project implements a JSON endpoint that serves the same information as displayed in the HTML endpoints for an arbitrary item in the catalog.
+1. The project implements a JSON endpoint that serves the same information as displayed in the HTML endpoints for an arbitrary item in the catalog.
 
 2. The website read category and item information from a database.
 
