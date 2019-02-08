@@ -1,7 +1,7 @@
 # Logs Analysis
 The objective of this project is to create a reporting tool that prints out reports (in plain text) based on the data in the database. This reporting tool is a Python program using the psycopg2 module to connect to the database.
 
-![Screenshot](reports.png)
+![Screenshot](reportscreenshort.png)
 
 ## Running the project!
 
@@ -41,27 +41,33 @@ The log table includes one entry for each time a user has accessed the site.
 
 There are also the following views 
 
-1. create view requests as 
+1. 
+```
+create view requests as 
 select date(time), 
        count(*) 
 from log 
 group by date(time) 
 order by date(time);
-
-2. create view error as 
+```
+2. 
+```
+create view error as 
 select date(time), 
       count(*)
  from log 
  where status = '404 NOT FOUND' 
  group by date(time) 
  order by date(time);
-
- 3. create view requests_error as 
+```
+ 3. 
+ ```
+create view requests_error as 
 select requests.date, 
         round((100*error.count::numeric)/(requests.count::numeric),3) from requests, 
              error 
 where requests.date=error.date;
-
+```
 
 ### Project Rubric
 
